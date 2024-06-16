@@ -1,0 +1,8 @@
+# compiled output
+/build
+/.wwebjs_auth
+#dependencies
+/node_modules
+
+# files
+.env
