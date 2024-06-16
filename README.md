@@ -15,4 +15,4 @@ Basic Project Setup:
 3. You can start the project locally using the command <code>npm start</code>.
 
 Configuration:
-1. create a .env file in your repository using the command <code>cp example.env .env</code>. 
+1. Create a .env file in your repository using the command <code>cp example.env .env</code>. 
