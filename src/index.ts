@@ -1,8 +1,9 @@
 import express, { Application } from 'express';
 import dotenv from "dotenv"
-import {SuperAgent, SuperAgentClient,SuperAgentError} from "superagentai-js";
+import cors from "cors";
 import { mongoDb } from "./database/database";
 import { whatsAppClient } from './whatsapp/whatsappClient';
+import whatsappWebRoutes from './routes/whatsapp-web.routes';
 dotenv.config()
 
 class Server{
@@ -18,6 +19,7 @@ class Server{
     // main config
     config(){
         this.app.set("port", process.env.PORT || 4000)
+        this.app.use(cors());
         mongoDb.connect().then(() => {
             console.log("Database connected");
             whatsAppClient.init()
@@ -28,12 +30,16 @@ class Server{
 		
 	}
 
+    // method for the routes
     routes(){
         this.app.get("/", (req, res) => {
             res.send("Hi there");
           });
+        
+        this.app.use("/api/v1/whatsapp-web",whatsappWebRoutes);
     }
 
+    // method to start the app
     start(){
         this.app.listen(this.app.get("port"), () => {
             console.log("Server on port", this.app.get("port"));
