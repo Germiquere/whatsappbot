@@ -1,6 +1,9 @@
 # WHATSAPPBOT
 The project is a server that connects to WhatsApp via QR code and interfaces with an  AI assistant from SuperAgent to automatically respond to inquiries.
 In this case, the bot is a car salesman for the agency called "DREAMCAR".The assistant has the ability to remember its ongoing conversations and can respond to questions based on the context of those ones.
+## DEMO 
+## [Demo video 💥](https://www.youtube.com/watch?v=BQUEjkmKau8)
+
 ## Technologies
 - Typescript
 - Javascript
