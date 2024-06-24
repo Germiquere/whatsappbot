@@ -1,8 +1,10 @@
 # WHATSAPPBOT
 The project is a server that connects to WhatsApp via QR code and interfaces with an  AI assistant from SuperAgent to automatically respond to inquiries.
 In this case, the bot is a car salesman for the agency called "DREAMCAR".The assistant has the ability to remember its ongoing conversations and can respond to questions based on the context of those ones.
-## DEMO 
+## DEMOS 
 ## [Demo video 💥](https://www.youtube.com/watch?v=BQUEjkmKau8)
+## [Web 💥](https://whatsappbot-client.vercel.app/)
+
 
 ## Technologies
 - Typescript
@@ -20,3 +22,5 @@ Basic Project Setup:
 
 Configuration:
 1. Create a .env file in your repository using the command <code>cp example.env .env</code>. 
+## Extra
+This is the link for the front-end repository [front-end 💥](https://github.com/Germiquere/whatsappbotClient)
