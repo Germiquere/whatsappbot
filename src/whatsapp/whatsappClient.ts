@@ -1,13 +1,19 @@
-import WAWebJS, { Client, RemoteAuth } from 'whatsapp-web.js';
-import { superAgentClient } from '../superagent/superAgent';
+import WAWebJS, { Client, MessageMedia, RemoteAuth } from 'whatsapp-web.js';
 import { MongoStore } from 'wwebjs-mongo';
 import mongoose from 'mongoose';
+import fs from 'fs';
+
+import { superAgentClient } from '../superagent/superAgent';
 import { chatHistoryService } from '../services/chatHistory.service';
 import { IMessage } from '../models/chatHistory.model';
+import { vapiService } from '../services/vapi.service';
+import path from 'path';
+import { vapiClient } from '../vapi/vapi';
 
 class WhatsAppClient {
     private client: Client;
     private isConnected: boolean = false; // connextion status;
+    private message : WAWebJS.Message | null = null;
 
     constructor() {
         // Load the session data
@@ -29,13 +35,11 @@ class WhatsAppClient {
 
     // method to initialize client's events
     private initializeEventHandlers() {
-
         // when the client is ready
-        this.client.once('ready', () => {
+        this.client.on('ready',async () => {
             console.log('Client is ready!');
             this.setIsConnected(true);
         });
-
         // when the client saved the remote session
         this.client.on('remote_session_saved', () => {
             console.log("Session saved to the database");
@@ -66,7 +70,37 @@ class WhatsAppClient {
             this.reconnectClient();
         });
 
+        // when the vapi service emits an audioReady event
+        vapiService.on('audioReady', async (data :{ fileName :string, audioData: Buffer }) => {
+            try {
+                if(this.message){
+                    const { fileName, audioData } = data;
+                    const media = new MessageMedia('audio/wav', audioData.toString('base64'), fileName);
+                    await this.client.sendMessage(this.message.from, media);
+                    console.log("Audio message sent successfully");
+                    const filePath = path.resolve(__dirname,'..', 'temp',fileName);
+                    fs.unlink(filePath,(error)=>{
+                        if(error){
+                            throw new Error('Error deleting the audio file');
+                        }
+                    })
+                }    
+            }catch (error) {
+                throw error
+            }finally{
+                this.message = null;
+            }
+        })
         
+        // when the vapi service emits an event error
+        vapiService.on('audioError',()=>{
+            try {
+                throw new Error("Event Error in vapiService")
+            } catch (error) {
+                console.log("Event error in the handler error vapiService");
+            }
+            
+        })
     }
 
     // method to handle messages
@@ -75,6 +109,7 @@ class WhatsAppClient {
         console.log("Received message:",message.from, message.body);
 
         try {
+            this.message = message
             const agentId = "001049c4-bccc-420d-a432-b9b7b1c03508";
                 
             let messageObject :IMessage = {
@@ -92,7 +127,13 @@ class WhatsAppClient {
                 try {
                     const superAgent = new superAgentClient();
                     let output = await superAgent.invoke(JSON.stringify(chatHistory.history), chatHistory.agentId,message.from);
-                    message.reply(output.data.output);
+                    // TODO: use vapiService.on here with and await or something to mantain the workflow.
+                    try {
+                        await vapiClient.createCall(output.data.output);
+                    } catch (error) {
+                        throw new Error("Error in vapi client")
+                    }
+                    // message.reply(output.data.output);
 
                     let aiResponseObject:IMessage = {
                         type: 'ai',
@@ -131,7 +172,7 @@ class WhatsAppClient {
                 throw new Error('Error updating chat history in MongoDB');
             }
            
-        } catch (error) {
+        }catch (error) {
             throw new Error('Failed to send the message');
         }
 
@@ -171,7 +212,6 @@ class WhatsAppClient {
             });
         });
     }
-
 }
 
 export const whatsAppClient = new WhatsAppClient()
