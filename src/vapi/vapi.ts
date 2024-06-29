@@ -42,9 +42,9 @@ class VapiClient {
                 name: "German"
             },
             phoneNumber: {
-                twilioPhoneNumber: "+543496460785",
-                twilioAccountSid: "AC60ca9a2abc279a9fc0936d8d8ad9fda7",
-                twilioAuthToken: "4ec5a9c037e75809f3c8652f5c88dbf3",
+                twilioPhoneNumber: `${process.env.TWILIO_PHONE_NUMBER}`,
+                twilioAccountSid: `${process.env.TWILIO_ACCOUNTSID}`,
+                twilioAuthToken: `${process.env.TWILIO_AUTH_TOKEN}`,
                 name: "German"
             }
         };
