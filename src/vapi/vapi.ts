@@ -41,12 +41,12 @@ class VapiClient {
                 number: "+543496460785",
                 name: "German"
             },
-            phoneNumber: {
-                twilioPhoneNumber: `${process.env.TWILIO_PHONE_NUMBER}`,
-                twilioAccountSid: `${process.env.TWILIO_ACCOUNTSID}`,
-                twilioAuthToken: `${process.env.TWILIO_AUTH_TOKEN}`,
-                name: "German"
-            }
+            // phoneNumber: {
+            //     twilioPhoneNumber: `${process.env.TWILIO_PHONE_NUMBER}`,
+            //     twilioAccountSid: `${process.env.TWILIO_ACCOUNTSID}`,
+            //     twilioAuthToken: `${process.env.TWILIO_AUTH_TOKEN}`,
+            //     name: "German"
+            // }
         };
         try {
             const url = `${process.env.VAPI_URL}/call`;
