@@ -5,7 +5,6 @@ import { mongoDb } from "./database/database";
 import { whatsAppClient } from './whatsapp/whatsappClient';
 import whatsappWebRoutes from './routes/whatsapp-web.routes';
 import vapiRoutes from './routes/vapi.routes';
-import bodyParser from 'body-parser';
 dotenv.config()
 
 class Server{
@@ -22,7 +21,7 @@ class Server{
     config(){
         this.app.set("port", process.env.PORT || 4000)
         this.app.use(cors());
-        this.app.use(bodyParser.json())
+        this.app.use(express.json())
         mongoDb.connect().then(() => {
             console.log("Database connected");
             whatsAppClient.init()

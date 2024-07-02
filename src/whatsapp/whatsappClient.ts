@@ -13,7 +13,6 @@ import { vapiClient } from '../vapi/vapi';
 class WhatsAppClient {
     private client: Client;
     private isConnected: boolean = false; // connextion status;
-    private message : WAWebJS.Message | null = null;
 
     constructor() {
         // Load the session data
@@ -70,111 +69,84 @@ class WhatsAppClient {
             this.reconnectClient();
         });
 
-        // when the vapi service emits an audioReady event
-        vapiService.on('audioReady', async (data :{ fileName :string, audioData: Buffer }) => {
-            try {
-                if(this.message){
-                    const { fileName, audioData } = data;
-                    const media = new MessageMedia('audio/wav', audioData.toString('base64'), fileName);
-                    await this.client.sendMessage(this.message.from, media);
-                    console.log("Audio message sent successfully");
-                    const filePath = path.resolve(__dirname,'..', 'temp',fileName);
-                    fs.unlink(filePath,(error)=>{
-                        if(error){
-                            throw new Error('Error deleting the audio file');
-                        }
-                    })
-                }    
-            }catch (error) {
-                throw error
-            }finally{
-                this.message = null;
-            }
-        })
-        
-        // when the vapi service emits an event error
-        vapiService.on('audioError',()=>{
-            try {
-                throw new Error("Event Error in vapiService")
-            } catch (error) {
-                console.log("Event error in the handler error vapiService");
-            }
-            
-        })
     }
 
     // method to handle messages
     private async handleMessage(message :WAWebJS.Message) {
 
         console.log("Received message:",message.from, message.body);
-
-        try {
-            this.message = message
-            const agentId = "001049c4-bccc-420d-a432-b9b7b1c03508";
-                
-            let messageObject :IMessage = {
-                type: 'human',
-                content: message.body,
-                additional_kwargs:{},
-                name: null,
-                example: false
-            };
-
+        if(message.from !== 'status@broadcast'){
             try {
-                // If no document exists in the DB, create one; otherwise, update the existing document.
-                const chatHistory = await chatHistoryService.updateChatHistory(message.from, agentId, messageObject);
+                const agentId = "001049c4-bccc-420d-a432-b9b7b1c03508";
                     
+                let messageObject :IMessage = {
+                    type: 'human',
+                    content: message.body,
+                    additional_kwargs:{},
+                    name: null,
+                    example: false
+                };
+    
                 try {
-                    const superAgent = new superAgentClient();
-                    let output = await superAgent.invoke(JSON.stringify(chatHistory.history), chatHistory.agentId,message.from);
-                    // TODO: use vapiService.on here with and await or something to mantain the workflow.
+                    // If no document exists in the DB, create one; otherwise, update the existing document.
+                    const chatHistory = await chatHistoryService.updateChatHistory(message.from, agentId, messageObject);
+                        
                     try {
-                        await vapiClient.createCall(output.data.output);
-                    } catch (error) {
-                        throw new Error("Error in vapi client")
-                    }
-                    // message.reply(output.data.output);
+                        const superAgent = new superAgentClient();
+                        let output = await superAgent.invoke(JSON.stringify(chatHistory.history), chatHistory.agentId,message.from);
+                        // TODO: use vapiService.on here with and await or something to mantain the workflow.
+                        try {
+                            await vapiClient.createCall(output.data.output);
+                        } catch (error) {
+                            throw new Error("Error in vapi client")
+                        }
+        
+                        const audioData = await this.waitForAudioReady();
 
-                    let aiResponseObject:IMessage = {
-                        type: 'ai',
-                        content: output.success ? output.data.output : 'Lo siento, no pude procesar tu solicitud en este momento.',
-                        additional_kwargs:{},
-                        name:null,
-                        example:false
-                    };
-                    try {
-                        // TODO: refator following DRY principle.
-                        // updates the document with the new messages
-                        const chatHistoryWithAiMessage = await chatHistoryService.updateChatHistory(message.from,agentId,aiResponseObject)
+                        await this.sendAudioMessage(audioData,message);
 
-                        // the agent sends a follow up message based on a simple condition.
-                        if(chatHistoryWithAiMessage.history.length === 6){
-                        const customInput = `Primero, revisa y analiza la siguiente conversacion de un cliente interesado en nuestros autos:${JSON.stringify(chatHistoryWithAiMessage.history)}.Segundo, crea un mensaje de seguimiento que pregunte si la infomacion fue util y ofrece mas ayuda. (Envia solo el mensaje con la informacion util y ofreciendo mas ayuda)`
-                        const newOutput = await superAgent.invoke(customInput,chatHistoryWithAiMessage.agentId,message.from);
-                        message.reply(newOutput.data.output);
-                        let aiResponseObject2:IMessage = {
+                        let aiResponseObject:IMessage = {
                             type: 'ai',
-                            content: newOutput.success ? newOutput.data.output : 'Lo siento, no pude procesar tu solicitud en este momento.',
+                            content: output.success ? output.data.output : 'Lo siento, no pude procesar tu solicitud en este momento.',
                             additional_kwargs:{},
                             name:null,
                             example:false
                         };
-                        // updates the document with the new messages
-                        await chatHistoryService.updateChatHistory(message.from,agentId,aiResponseObject2)
+                        try {
+                            // TODO: refator following DRY principle.
+                            // updates the document with the new messages
+                            const chatHistoryWithAiMessage = await chatHistoryService.updateChatHistory(message.from,agentId,aiResponseObject)
+    
+                            // the agent sends a follow up message based on a simple condition.
+                            if(chatHistoryWithAiMessage.history.length === 6){
+                            const customInput = `Primero, revisa y analiza la siguiente conversacion de un cliente interesado en nuestros autos:${JSON.stringify(chatHistoryWithAiMessage.history)}.Segundo, crea un mensaje de seguimiento que pregunte si la infomacion fue util y ofrece mas ayuda. (Envia solo el mensaje con la informacion util y ofreciendo mas ayuda)`
+                            const newOutput = await superAgent.invoke(customInput,chatHistoryWithAiMessage.agentId,message.from);
+                            message.reply(newOutput.data.output);
+                            let aiResponseObject2:IMessage = {
+                                type: 'ai',
+                                content: newOutput.success ? newOutput.data.output : 'Lo siento, no pude procesar tu solicitud en este momento.',
+                                additional_kwargs:{},
+                                name:null,
+                                example:false
+                            };
+                            // updates the document with the new messages
+                            await chatHistoryService.updateChatHistory(message.from,agentId,aiResponseObject2)
+                            }
+                        } catch (error) {
+                            throw new Error('Error updating chat history in MongoDB');
                         }
                     } catch (error) {
-                        throw new Error('Error updating chat history in MongoDB');
+                        throw new Error('Error in the superAgent');
                     }
                 } catch (error) {
-                    throw new Error('Error in the superAgent');
+                    throw new Error('Error updating chat history in MongoDB');
                 }
-            } catch (error) {
-                throw new Error('Error updating chat history in MongoDB');
+               
+            }catch (error) {
+                throw new Error('Failed to send the message');
             }
-           
-        }catch (error) {
-            throw new Error('Failed to send the message');
         }
+        
 
     }
 
@@ -211,6 +183,41 @@ class WhatsAppClient {
                 resolve(qr);
             });
         });
+    }
+
+    // method to wait the audioReady event
+    private waitForAudioReady(): Promise<{ fileName: string, audioData: Buffer }> {
+        return new Promise((resolve, reject) => {
+            vapiService.once('audioReady', (data) => {
+            resolve(data);
+            });
+
+            vapiService.once('audioError', (error) => {
+                reject(new Error('Event Error in vapiService'));
+            });
+        });
+    }
+
+    // method to handle sendding the audio file
+    private async sendAudioMessage(data: { fileName: string, audioData: Buffer },message :WAWebJS.Message) {
+        try {
+            if (message && message.from !== 'status@broadcast') {
+                const { fileName, audioData } = data;
+
+                const media = new MessageMedia('audio/ogg; codecs=opus', audioData.toString('base64'), fileName);
+                await this.client.sendMessage(message.from, media);
+                console.log("Audio message sent successfully");
+
+                const filePath = path.resolve(__dirname, '..', 'temp', fileName);
+                fs.unlink(filePath, (error) => {
+                    if (error) {
+                        throw new Error('Error deleting the audio file');
+                    }
+                });
+            }
+        } catch (error) {
+            throw error;
+        }
     }
 }
 
