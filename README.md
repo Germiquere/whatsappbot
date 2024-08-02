@@ -2,7 +2,7 @@
 This project showcases a server that connects to WhatsApp using a QR code and integrates with SuperAgent's AI assistant to automate responses. Acting as a virtual car salesman for the DREAMCAR agency, the assistant retains context from ongoing conversations to provide tailored responses to customer queries.
 ## DEMOS 
 ## [Demo video 💥](https://www.youtube.com/watch?v=BQUEjkmKau8)
-## [Web 💥](https://whatsappbot-client.vercel.app/)
+
 
 
 ## Technologies
